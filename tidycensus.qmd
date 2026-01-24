@@ -1,0 +1,115 @@
+---
+title: "tidycensus Exploration"
+format: html
+author: ElectriGrid
+warning: false
+message: false
+---
+```{r}
+# load necessary libraries
+library(tidyverse)
+library(tidycensus)
+```
+
+# Census variable
+
+
+```{r}
+# access variable names to for selection of 
+var20 <- load_variables(2020, "acs5", cache = TRUE)
+
+#........................write data to csv.......................
+write_csv(var20, file = here::here("census-data", "var20.csv")) 
+```
+
+There slightly under 30,000 variables. 
+
+```{r}
+var20_clean <- var20 |> 
+  # clean label column
+  mutate(label = str_replace_all(label, "[^A-Za-z0-9]", " ")) 
+```
+
+There is no argument for the level so we'll filter down to census tract. This is also specified when calling data but subset here to see the true number of variables change with future filtering.
+```{r}
+tract_var20 <- var20_clean |> filter(geography == "tract")
+```
+
+We only need some of the census data not all 13,000 rows. 
+
+Subsetting for `Male` and `Female` below makes gives us 5,222 rows. This is too many and probably does not include the data we need. 
+```{r}
+# look at the number of variables for sex
+sex <- c("Male", "Female")
+
+# filter the variables by the variables of interest
+tract_var20_sex <-  filter(tract_var20, 
+                           str_detect(tract_var20$label, 
+                                      paste(sex, collapse = "|")))
+```
+
+ Subsetting for the exact words being included in the column still gives 1,733 variables. 
+```{r}
+# variables of interest
+key_words <- c("Income", "Poverty", "Education", "Language", "Disability", "Employment", "Rent", "Family")
+
+# filter the variables by the variables of interest
+tract_var20_sub <-  filter(tract_var20, 
+                           str_detect(tract_var20$label, 
+                                      str_c("\\b(", str_c(key_words, collapse = "|"), ")\\b"))) # regex code for only exact matches
+
+```
+
+1,733 still seems like a ton of variables. First lets attempt to get clean population data. 
+```{r}
+white_pop <- sprintf("B01001A_0%02d", seq(1:31))
+black_pop <- sprintf("B01001B_0%02d", seq(1:31))
+native_pop <- sprintf("B01001C_0%02d", seq(1:31))
+asian_pop <- sprintf("B01001D_0%02d", seq(1:31))
+haw_pop <- sprintf("B01001E_0%02d", seq(1:31))
+oth_rac_pop <- sprintf("B01001F_0%02d", seq(1:31))
+rac2_pop <- sprintf("B01001G_0%02d", seq(1:31))
+lat_pop <- sprintf("B01001I_0%02d", seq(1:31))
+
+pop_var <- c(white_pop, black_pop, native_pop, asian_pop, haw_pop, oth_rac_pop, rac2_pop, lat_pop)
+```
+
+Since the `labels` will be used for the column names let's clean them. 
+```{r}
+var20_clean <- var20_clean |> 
+   mutate(label = str_replace_all(label, " ", "_"))
+```
+
+
+Extract the column `labels` using the `name` column.
+```{r}
+ column_names <- var20_clean |> 
+  filter(var20_clean$name %in% pop_var)
+```
+
+Access the data from the census catalogue. 
+```{r}
+# access census data
+census_data <- get_acs(geography = "tract", 
+                        variables = pop_var,
+                        geometry = TRUE,
+                        state = "CA", 
+                        year = 2020)
+
+```
+
+Use the `column_names` to change the arbitrary `names` used to denote what the values actually mean.
+```{r}
+
+```
+
+Pivot to make the data tidy. 
+```{r}
+# census_data |> 
+#  pivot_wider(names_from = variable)
+
+#........................write data to csv.......................
+#write_csv(census_data, file = here::here("censusdata", "ca_pop.csv"))  
+```
+
+
