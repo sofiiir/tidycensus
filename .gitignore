@@ -6,6 +6,12 @@
 .RData
 .RDataTmp
 
+# ds_store
+.DS_Store
+
+# data
+census-data/
+
 # User-specific files
 .Ruserdata
 
