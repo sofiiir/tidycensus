@@ -138,7 +138,8 @@ Pivot to make the data tidy.
  There are two values for each variable. There are estimates and margins of error. These both get added as individual columns.
 ```{r}
 pop_census_tidy <- clean_census |>
- pivot_wider(names_from = columns, values_from = c(estimate, moe))
+ pivot_wider(names_from = columns, values_from = c(estimate, moe)) |> 
+  clean_names() 
 
 #........................write data to csv.......................
 write_csv(pop_census_tidy, file = here::here("census-data", "pop_census_tidy.csv"))  
