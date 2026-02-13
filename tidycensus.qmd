@@ -8,7 +8,6 @@ message: false
 
 This quarto document explores the Census ACS 5-year data utilizing the `tidycensus` package. The challenge is to narrow down the data from the 13,033 variables. The final output of this repository is a clean data frame to be utilized in the ElectriGrid MEDS capstone.
 
-
 ```{r}
 # load necessary libraries
 library(tidyverse)
@@ -18,7 +17,8 @@ library(janitor)
 
 # Census variable
 
-Download a csv with the variables for the census data. 
+Download a csv with the variables for the census data.
+
 ```{r}
 # access variable names to for selection of 
 var20 <- load_variables(2020, "acs5", cache = TRUE)
@@ -27,10 +27,12 @@ var20 <- load_variables(2020, "acs5", cache = TRUE)
 write_csv(var20, file = here::here("census-data", "var20.csv")) 
 ```
 
-There are slightly under 30,000 variables. 
+There are slightly under 30,000 variables.
 
-#### Clean the labels 
-Once the labels column is cleaned it can be utilized to filter down the variables. Here we keep only the numbers and letters. 
+#### Clean the labels
+
+Once the labels column is cleaned it can be utilized to filter down the variables. Here we keep only the numbers and letters.
+
 ```{r}
 var20_clean <- var20 |> 
   # clean label column
@@ -38,13 +40,15 @@ var20_clean <- var20 |>
 ```
 
 There is no argument for the level of variables when downloading the csv so we'll filter down to census tract. This is also specified when calling data but let's subset here to see the true number of variables change with future filtering.
+
 ```{r}
 tract_var20 <- var20_clean |> filter(geography == "tract")
 ```
 
-We only need some of the census data not all 13,000 rows. 
+We only need some of the census data not all 13,000 rows.
 
-Subsetting for `Male` and `Female` below makes gives us 5,222 rows. This is too many variables and probably does not filter down to only the data we need. 
+Subsetting for `Male` and `Female` below makes gives us 5,222 rows. This is too many variables and probably does not filter down to only the data we need.
+
 ```{r}
 # look at the number of variables for sex
 sex <- c("Male", "Female")
@@ -54,7 +58,8 @@ tract_var20_sex <-  filter(tract_var20,
                            str_detect(tract_var20$label, 
                                       paste(sex, collapse = "|")))
 ```
-#### Subset based on key words of interest 
+
+#### Subset based on key words of interest
 
 ```{r}
 # variables of interest
@@ -66,11 +71,13 @@ tract_var20_sub <-  filter(tract_var20,
                                       str_c("\\b(", str_c(key_words, collapse = "|"), ")\\b"))) # regex code for only exact matches
 
 ```
-Subsetting for the key words in the labels column still gives 1,733 variables. 1,733 still seems like a ton of variables. 
+
+Subsetting for the key words in the labels column still gives 1,733 variables. 1,733 still seems like a ton of variables.
 
 #### Make a workflow
 
-First lets attempt to get clean population data to create a workflow that can be used for all of the data. 
+First lets attempt to get clean population data to create a workflow that can be used for all of the data.
+
 ```{r}
 white_pop <- sprintf("B01001A_0%02d", seq(1:31))
 black_pop <- sprintf("B01001B_0%02d", seq(1:31))
@@ -84,31 +91,35 @@ lat_pop <- sprintf("B01001I_0%02d", seq(1:31))
 pop_var <- c(white_pop, black_pop, native_pop, asian_pop, haw_pop, oth_rac_pop, rac2_pop, lat_pop)
 ```
 
-Since the `labels` will be used for the column names let's clean them. 
+Since the `labels` will be used for the column names let's clean them.
+
 ```{r}
 var20_clean <- var20_clean |> 
    mutate(label = str_replace_all(label, " ", "_"))
 ```
 
 The `concept` column also holds some pertinent data information. Let's clean them.
+
 ```{r}
 var20_clean <- var20_clean |> 
    mutate(concept = str_replace_all(concept, " ", "_")) 
 ```
 
 Since `labels` and `concepts` are both necessary to understand the data let's combine them.
+
 ```{r}
 var20_clean$columns <- paste(var20_clean$label, var20_clean$concept)
 ```
 
-
 Extract the column `columns` using the `name` column.
+
 ```{r}
  column_names <- var20_clean |> 
   filter(var20_clean$name %in% pop_var)
 ```
 
-Access the data from the census catalogue. 
+Access the data from the census catalogue.
+
 ```{r}
 # access census data
 census_data <- get_acs(geography = "tract", 
@@ -120,6 +131,7 @@ census_data <- get_acs(geography = "tract",
 ```
 
 Use the `column_names` to change the arbitrary `names` used to denote what the values actually mean.
+
 ```{r}
 census_w_var <- census_data |> 
   left_join(column_names, by = c("variable" = "name"))
@@ -128,14 +140,15 @@ census_w_var <- census_data |>
 Select the columns that are needed for the analysis.
 
 Note: moe stands for margin of error.
+
 ```{r}
 clean_census<- census_w_var |> 
   clean_names() |> 
   select("geoid", "name", "estimate", "moe", "columns", "geometry") 
 ```
 
-Pivot to make the data tidy. 
- There are two values for each variable. There are estimates and margins of error. These both get added as individual columns.
+Pivot to make the data tidy. There are two values for each variable. There are estimates and margins of error. These both get added as individual columns.
+
 ```{r}
 pop_census_tidy <- clean_census |>
  pivot_wider(names_from = columns, values_from = c(estimate, moe)) |> 
@@ -146,3 +159,95 @@ write_csv(pop_census_tidy, file = here::here("census-data", "pop_census_tidy.csv
 ```
 
 # The clean data steps should be re-run once the variables list has been narrowed down
+
+## Narrowing down analysis
+
+Using a list of variables provided by Yohan Min (ElectriGrid client), we can attempt to withdraw census data using specific codes.
+
+Create dataframes of provided variable codes and their meanings:
+```{r}
+# home owner rate variables
+var_codes_home_owner <- tribble(
+  ~code, ~description,
+  "B25003_001", "housing_units_tenure",
+  "B25003_002", "owner_occupied",
+  "B25003_003", "renter_occupied",
+  "B25003H_003", "renter_occupied_white", # tenure
+  "B25026_001", "pop_in_occupied", # total pop in occupied units
+  "B25026_009", "pop_renter_occupied",
+  "B25127_001", "total_housing_units", 
+  "B11011_004", "married_one_unit", # married-couple family, one-unit structures; single family housing rate
+  "B11011_002", "household_type_by_unit" # family households/household type by units in structure
+)
+
+# education variables
+var_codes_edu <- var_codes_home_owner <- tribble(
+  ~code, ~description,
+  "B16010_041", "pop_bach_or_higher",
+  "B16010_001", "total_pop")
+
+# home value
+var_codes_home_value <- tribble(
+  ~code, ~description,
+  "B25077_001", "median_value", # dollars
+  "B25097_001", "mortgage_status", # dollars
+  "B25107_001", "median_value_by_year" # value by year structure built
+)
+
+# income status
+var_codes_income <- tribble(
+  ~code, ~description,
+  "B19113_001", "median_family_income_2015", # past 12 months; 2015 inflation-adjusted
+  "B19013_001", "median_household_income", # past 12 months; 2015 inflation-adjusted
+  "B19013A_001", "median_family_income_white", # past 12 months; 2018 inflation-adjusted,
+  "B19013B_001", "median_family_income_black" # past 12 months; 2018 inflation-adjusted
+)
+
+# race
+var_codes_income <- tribble(
+  ~code, ~description,
+  "B01001A_001", "sex_by_age_white",
+  "B01001D_001", "sex_by_age_asian"
+)
+
+# mortgage
+var_codes_mortgage <- tribble(
+  ~code, ~description,
+  "B25027_001", "total",
+  "B25027_002", "units_w_mortgage" # total housing units w mortgage
+)
+
+# Gini index
+var_codes_gini <- tribble(
+  ~code, ~description,
+  "B19083_001", "gini_index"
+)
+
+# poverty
+var_codes_poverty <- tribble(
+  ~code, ~description,
+  "B17001_002", "income_povery", # total income in past 12 months below poverty level; past 12 months, by sex by sex
+  "B06012_004", "above_poverty" # total at or above 150% of poverty level
+)
+
+# miscellaneous: B17001_001 (poverty, unsure what); B01001B_001, B01001C_001 ("for other races")
+```
+
+Create loop to run over variable code data frames. Each loop accesses and saves the corresponding census data into the environment:
+```{r}
+for (i in 1:nrow(var_codes_home_owner)){
+  
+  variable <- var_codes_home_owner$description[i]
+  code <- var_codes_home_owner$code[i]
+  
+  df <- get_acs(geography = "tract", 
+                        variables = code,
+                        geometry = TRUE,
+                        state = "CA", 
+                        year = 2020)
+  
+  assign(variable, df)
+}
+```
+
+This loop can be applied to all data frames created before.
