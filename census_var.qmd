@@ -27,13 +27,20 @@ This quarto document explores the Census ACS 5-year data utilizing the `tidycens
  - B19013_001: median_household_income # past 12 months; 2015 inflation-adjusted
  - B19013A_001: median_family_income_white # past 12 months; 2018 inflation-adjusted,
  - B19013B_001: median_family_income_black # past 12 months; 2018 inflation-adjusted
- - B01001A_001: sex_by_age_white
- - B01001B_001: sex_by_age_black
- - B01001C_001: sex_by_age_american_indian
- - B01001D_001: sex_by_age_asian
- - B01001E_001: sex_by_age_hawaian_and_pacific_islander
- - B01001F_001: sex_by_other_race
- - B01001G_001: sex_by_
+ - B01001A_001: estimate_white
+ - B01001B_001: estimate_black
+ - B01001C_001: estimate_american_indian
+ - B01001D_001: estimate_asian
+ - B01001E_001: estimate_hawaian_and_pacific_islander
+ - B01001F_001: estimate_other_race
+ - B01001G_001: estimate_two_or_more_races
+ - B01001I_001: estimate_latino
+ - B25027_001: total_morgage
+ - B25027_002: units_w_mortgage
+ - B19083_001: gini_index
+ - B17001_002: income_poverty
+ - B06012_004: above_poverty
+ 
 
 ```{r}
 # load necessary libraries
@@ -74,38 +81,105 @@ tract_var20 <- var20_clean |> filter(geography == "tract")
 
 We only need some of the census data not all 13,000 rows.
 
-This loop can be applied to all data frames created before.
 
-The loop is just outputting one of variables' values but we need all of them. We can just make a list of the variables and get the estimates for all of them in one call. This will make it easier to get a tidy data frame of the variables and the estimates we need.
-
+Create a list of all of the variables we are interested in for this analysis. 
 ```{r}
-socioeconomic_var <- c("B25003_001", 
-                       "B25003_002", 
-                       "B25003_003", 
-                       "B25003H_003", 
+socioeconomic_var <- c("B25011_001",
+                       "B25011_002",
+                       "B25011_026",
                        "B25026_001", 
-                       "B25026_009", 
+                       "B25026_009",
                        "B25127_001",
                        "B11011_004",
                        "B11011_002",
-                       "B16010_041", 
+                       "B16010_041",
                        "B16010_001",
-                       "B25077_001", 
+                       "B25107_001",
                        "B25097_001",
-                       "B25107_001",  
-                       "B19113_001",
-                       "B19013_001", 
-                       "B19013A_001", 
+                       "B25107_001",
+                       "B06011_001",
+                       "B19013A_001",
                        "B19013B_001", 
-)
+                       "B01001C_001",
+                       "B01001D_001",
+                       "B01001E_001",
+                       "B01001F_001",
+                       "B01001G_001",
+                       "B01001I_001",
+                       "B25027_001",
+                       "B25027_002",
+                       "B19083_001",
+                       "B17001_002",
+                       "B06012_004")
+```
+
+Access the data from the census catalogue giving it all of the variables we are interested in. 
+```{r}
+# access census data
+census_data <- get_acs(geography = "tract", 
+                        variables = socioeconomic_var,
+                        geometry = TRUE,
+                        state = "CA", 
+                        year = 2020)
+
+```
+Join the downloaded census data with the variable names.
+```{r}
+census_w_var <- left_join(census_data, tract_var20, by= join_by(variable == name))
+```
+
+The output data is long so let's make the data tidy and only keep the columns we need for this analysis.
+```{r}
+tidy_census <- census_data |>
+  clean_names() |> 
+  select(geoid, name, variable, estimate, geometry) |> 
+ pivot_wider(names_from = variable, values_from = c(estimate))
+```
+
+
+
+The arbitrary IDs are used for the column names. Let's change this so that the data is more easily understood.
+```{r}
+# tidy_census <- tidy_census |> 
+#   rename(housing_units_tenure = B25003_001,
+#         owner_occupied = B25003_002,
+#         renter_occupied = B25003_003,
+#         renter_occupied_white = B25003H_003,
+#         pop_in_occupied = B25026_001,
+#         pop_renter_occupied = B25026_009,
+#         total_housing_units = B25127_001,
+#         married_one_unit = B11011_004,
+#         household_type_by_unit = B11011_002,
+#         pop_bach_or_higher = B16010_041,
+#         
+#       
+# 
+#  - : 
+#  - B16010_001: total_pop
+#  - B25077_001: median_value # dollars
+#  - B25097_001: mortgage_status # dollars
+#  - B25107_001: median_value_by_year # value by year structure built
+#  - B19113_001: median_family_income_2015 # past 12 months; 2015 inflation-adjusted
+#  - B19013_001: median_household_income # past 12 months; 2015 inflation-adjusted
+#  - B19013A_001: median_family_income_white # past 12 months; 2018 inflation-adjusted,
+#  - B19013B_001: median_family_income_black # past 12 months; 2018 inflation-adjusted
+#  - B01001A_001: estimate_white
+#  - B01001B_001: estimate_black
+#  - B01001C_001: estimate_american_indian
+#  - B01001D_001: estimate_asian
+#  - B01001E_001: estimate_hawaian_and_pacific_islander
+#  - B01001F_001: estimate_other_race
+#  - B01001G_001: estimate_two_or_more_races
+#  - B01001I_001: estimate_latino
+#  - B25027_001: total_morgage
+#  - B25027_002: units_w_mortgage
+#  - B19083_001: gini_index
+#  - B17001_002: income_poverty
+#  - B06012_004: above_poverty)
 ```
 
 
 ```{r}
-tidy_df <- df |>
-  select(GEOID, NAME, variable, estimate, geometry) |> 
- pivot_wider(names_from = variable, values_from = c(estimate)) 
-
 #........................write data to csv.......................
 #write_csv(pop_census_tidy, file = here::here("census-data", "pop_census_tidy.csv"))  
 ```
