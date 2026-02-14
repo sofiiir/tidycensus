@@ -9,33 +9,55 @@ message: false
 
 This quarto document explores the Census ACS 5-year data utilizing the `tidycensus` package. The challenge is to narrow down the data from the 13,033 variables. The final output of this repository is a clean data frame to be utilized in the ElectriGrid MEDS capstone. The client has provided a list of variables of interest. 
 
+**Home owner rate** 
  - B25011_001: Estimate Total Tenure by household type 
  - B25011_002: tenure_owner_occupied
  - B25011_026: tenure_renter_occupied
  - B25026_001: pop_in_occupied # total pop in occupied units
  - B25026_009: pop_renter_occupied
  - B25127_001: total_housing_units
+ 
+ **Single family housing rate** 
  - B11011_004: married_one_unit # married-couple family, one-unit structures; single family housing rate
  - B11011_002: household_type_by_unit # family households/household type by units in structure
+ 
+ **Education**  
  - B16010_041: pop_bach_or_higher
  - B16010_001: total_pop
+ 
+ **Home value** 
  - B25107_001: Estimate Median value Total median value by year structure built
  - B25097_001: mortgage_status # dollars
  - B25107_001: median_value_by_year # value by year structure built
+ 
+ **Income status**. 
  - B06011_001: median_family_income_2020 # past 12 months; 2020 inflation-adjusted
  - B19013A_001: median_family_income_white 
  - B19013B_001: median_family_income_black 
- - B01001A_001: median_family_income_white
- - B01001B_001: median_family_income_black
- - B01001C_001: median_family_income_american_indian
- - B01001D_001: median_family_income_asian
- - B01001E_001: median_family_income_hawaian_and_pacific_islander
- - B01001F_001: median_family_income_other_race
- - B01001G_001: median_family_income_two_or_more_races
- - B01001I_001: median_family_income_latino
+ - B19013C_001: median_family_income_american_indian
+ - B19013D_001: median_family_income_asian
+ - B19013F_001: median_family_income_other_race
+ - B19013G_001: median_family_income_two_or_more_races
+ - B19013I_001: median_family_income_latinos
+ 
+ **Race**. 
+ - B01001A_001: pop_white
+ - B01001B_001: pop_black
+ - B01001C_001: pop_american_indian
+ - B01001D_001: pop_asian
+ - B01001E_001: pop_hawaian_and_pacific_islander
+ - B01001F_001: pop_other_race
+ - B01001G_001: pop_two_or_more_races
+ - B01001I_001: pop_latino
+ 
+ **Mortgage**
  - B25027_001: total_mortgage
  - B25027_002: units_w_mortgage
+ 
+ **Gini**
  - B19083_001: gini_index
+ 
+ **Poverty**
  - B17001_002: income_poverty
  - B06012_004: above_poverty
  
@@ -98,6 +120,13 @@ socioeconomic_var <- c("B25011_001",
                        "B06011_001",
                        "B19013A_001",
                        "B19013B_001", 
+                       "B19013C_001",
+                       "B19013D_001",
+                       "B19013F_001",
+                       "B19013G_001",
+                       "B19013I_001",
+                       "B01001A_001",
+                       "B01001B_001",
                        "B01001C_001",
                        "B01001D_001",
                        "B01001E_001",
